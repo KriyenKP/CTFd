@@ -429,10 +429,13 @@ def get_ghcr_repositories(github_username, github_pat, include_tags=False, filte
             if filter_repos and name not in filter_repos:
                 continue
 
-            print(f"[+] Found package: {name}")
-            # If include_tags is False, just add the package name
+            # Always use full registry path for GHCR images (lowercase for Docker compatibility)
+            full_image_name = f"ghcr.io/{github_username.lower()}/{name}"
+            print(f"[+] Found package: {full_image_name}")
+            
+            # If include_tags is False, just add the full image name
             if not include_tags:
-                result.append(name)
+                result.append(full_image_name)
 
             if include_tags:
                 # Fetch versions (i.e., tags) of this package
@@ -445,11 +448,11 @@ def get_ghcr_repositories(github_username, github_pat, include_tags=False, filte
                         # Some versions may not have metadata.tags
                         tags = version.get("metadata", {}).get("container", {}).get("tags", [])
                         for tag in tags:
-                            result.append(f"{name}:{tag}")
+                            result.append(f"{full_image_name}:{tag}")
                 else:
                     print(f"[-] Could not fetch tags for {name}: {tags_resp.status_code}")
-            else:
-                result.append(name)
+                    # If we can't get tags, add the image with latest tag
+                    result.append(f"{full_image_name}:latest")
 
         return list(set(result))
 
@@ -581,7 +584,9 @@ def create_container(docker, image, team, portbl):
     URL_TEMPLATE = '%s://%s' % (prefix, host)
     needed_ports = get_required_ports(docker, image)
     team = hashlib.md5(team.encode("utf-8")).hexdigest()[:10]
-    container_name = "%s_%s" % (image.split(':')[1], team)
+    # Create container name from image name (replace special chars with underscores)
+    image_name = image.split(':')[0].replace('/', '_').replace('-', '_')
+    container_name = "%s_%s" % (image_name, team)
     assigned_ports = dict()
     for i in needed_ports:
         while True:
@@ -695,6 +700,7 @@ class DockerChallengeType(BaseChallenge):
             'name': challenge.name,
             'value': challenge.value,
             'docker_image': challenge.docker_image,
+            'connection_type': challenge.connection_type or 'auto',
             'description': challenge.description,
             'category': challenge.category,
             'state': challenge.state,
@@ -809,6 +815,7 @@ class DockerChallenge(Challenges):
     __mapper_args__ = {'polymorphic_identity': 'docker'}
     id = db.Column(None, db.ForeignKey('challenges.id'), primary_key=True)
     docker_image = db.Column(db.String(128), index=True)
+    connection_type = db.Column(db.String(20), default='auto', index=True)
 
 
 # API
@@ -830,7 +837,84 @@ class ContainerAPI(Resource):
         docker = DockerConfig.query.filter_by(id=1).first()
         containers = DockerChallengeTracker.query.all()
         available_repos = get_repositories(docker, tags=False)
-        if container not in available_repos:
+        
+        # Check if container is in available repos (handle both short and full registry paths)
+        container_found = False
+        if container in available_repos:
+            container_found = True
+        else:
+            # If not found, try to match by extracting the image name from full registry paths
+            for repo in available_repos:
+                if repo.endswith('/' + container) or repo.split('/')[-1] == container.split('/')[-1]:
+                    c check != None:
+            delete_container(docker, check.instance_id)
+            if is_teams_mode():
+                Docke check != None:
+            delete_container(docker, check.instance_id)
+            if is_teams_mode():
+                DockerChallengeTracker.query.filter_by(team_id=session.id).filter_by(docker_image=container).delete()
+            else:
+                DockerChallengeTracker.query.filter_by(user_id=session.id).filter_by(docker_image=container).delete()
+            db.session.commit()
+        
+        # Check if a container is already running for this user. We need to recheck the DB first
+        containers = DockerChallengeTracker.query.all()
+        for i in containers:
+            if int(session.id) == int(i.user_id):
+                return abort(403,f"Another container is already running for challenge:<br><i><b>{i.challenge}</b></i>.<br>Please stop this first.<br>You can only run one container.")
+
+        portsbl = get_unavailable_ports(docker)
+        create = create_container(docker, container, session.name, portsbl)
+        ports = json.loads(create[1])['HostConfig']['PortBindings'].values()
+        entry = DockerChallengeTracker(
+            team_id=session.id if is_teams_mode() else None,
+            user_id=session.id if not is_teams_mode() else None,
+            docker_image=container,
+            timestamp=unix_time(datetime.utcnow()),
+            revert_time=unix_time(datetime.utcnow()) + 300,
+            instance_id=create[0]['Id'],
+            ports=','.join([p[0]['HostPort'] for p in ports]),
+            host=str(docker.hostname).split(':')[0],
+            challenge=challenge
+        )
+        db.session.add(entry)
+        db.session.commit()
+        #db.session.close()
+        return
+rChallengeTracker.query.filter_by(team_id=session.id).filter_by(docker_image=container).delete()
+            else:
+                DockerChallengeTracker.query.filter_by(user_id=session.id).filter_by(docker_image=container).delete()
+            db.session.commit()
+        
+        # Check if a container is already running for this user. We need to recheck the DB first
+        containers = DockerChallengeTracker.query.all()
+        for i in containers:
+            if int(session.id) == int(i.user_id):
+                return abort(403,f"Another container is already running for challenge:<br><i><b>{i.challenge}</b></i>.<br>Please stop this first.<br>You can only run one container.")
+
+        portsbl = get_unavailable_ports(docker)
+        create = create_container(docker, container, session.name, portsbl)
+        ports = json.loads(create[1])['HostConfig']['PortBindings'].values()
+        entry = DockerChallengeTracker(
+            team_id=session.id if is_teams_mode() else None,
+            user_id=session.id if not is_teams_mode() else None,
+            docker_image=container,
+            timestamp=unix_time(datetime.utcnow()),
+            revert_time=unix_time(datetime.utcnow()) + 300,
+            instance_id=create[0]['Id'],
+            ports=','.join([p[0]['HostPort'] for p in ports]),
+            host=str(docker.hostname).split(':')[0],
+            challenge=challenge
+        )
+        db.session.add(entry)
+        db.session.commit()
+        #db.session.close()
+        return
+ontainer_found = True
+                    container = repo  # Use the full registry path for subsequent operations
+                    break
+        
+        if not container_found:
             if docker.use_registry:
                 return abort(403,f"Container {container} not present in the registry.")
             else:
@@ -845,7 +929,39 @@ class ContainerAPI(Resource):
                     db.session.commit()
             check = DockerChallengeTracker.query.filter_by(team_id=session.id).filter_by(docker_image=container).first()
         else:
-            session = get_current_user()
+             check != None:
+            delete_container(docker, check.instance_id)
+            if is_teams_mode():
+                DockerChallengeTracker.query.filter_by(team_id=session.id).filter_by(docker_image=container).delete()
+            else:
+                DockerChallengeTracker.query.filter_by(user_id=session.id).filter_by(docker_image=container).delete()
+            db.session.commit()
+        
+        # Check if a container is already running for this user. We need to recheck the DB first
+        containers = DockerChallengeTracker.query.all()
+        for i in containers:
+            if int(session.id) == int(i.user_id):
+                return abort(403,f"Another container is already running for challenge:<br><i><b>{i.challenge}</b></i>.<br>Please stop this first.<br>You can only run one container.")
+
+        portsbl = get_unavailable_ports(docker)
+        create = create_container(docker, container, session.name, portsbl)
+        ports = json.loads(create[1])['HostConfig']['PortBindings'].values()
+        entry = DockerChallengeTracker(
+            team_id=session.id if is_teams_mode() else None,
+            user_id=session.id if not is_teams_mode() else None,
+            docker_image=container,
+            timestamp=unix_time(datetime.utcnow()),
+            revert_time=unix_time(datetime.utcnow()) + 300,
+            instance_id=create[0]['Id'],
+            ports=','.join([p[0]['HostPort'] for p in ports]),
+            host=str(docker.hostname).split(':')[0],
+            challenge=challenge
+        )
+        db.session.add(entry)
+        db.session.commit()
+        #db.session.close()
+        return
+session = get_current_user()
             for i in containers:
                 if int(session.id) == int(i.user_id) and (unix_time(datetime.utcnow()) - int(i.timestamp)) >= 7200:
                     delete_container(docker, i.instance_id)

@@ -18,6 +18,21 @@
         Select an image from the available options. Images will be pulled automatically when needed.
     </small>
 </div>
+<div class="form-group">
+    <label for="connection_type">Connection Type:
+        <i class="far fa-question-circle text-muted cursor-help" data-toggle="tooltip" data-placement="right" title="How users should connect to this challenge"></i>
+    </label>
+    <select id="connection_type" name="connection_type" class="form-control">
+        <option value="auto">Auto-detect (recommended)</option>
+        <option value="http">HTTP/Web Application</option>
+        <option value="netcat">Netcat/Network Service</option>
+        <option value="ssh">SSH Service</option>
+        <option value="ftp">FTP Service</option>
+    </select>
+    <small class="form-text text-muted">
+        Choose how users should connect to this challenge. Auto-detect will guess based on the port and image name.
+    </small>
+</div>
 {% endblock %}
 {% block type %}
 <input type="hidden" name="type" value="docker" id="chaltype">

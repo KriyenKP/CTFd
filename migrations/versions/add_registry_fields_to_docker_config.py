@@ -1,7 +1,7 @@
 """Add registry fields to docker_config table"""
 
 revision = "addregistry001"
-down_revision = "62bf576b2cd3"
+down_revision = "f73a96c97449"
 branch_labels = None
 depends_on = None
 

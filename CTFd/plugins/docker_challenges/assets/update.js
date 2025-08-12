@@ -7,6 +7,11 @@ CTFd.plugin.run((_CTFd) => {
                 $("#dockerimage_select").append($("<option />").val(item.name).text(item.name));
             });
             $("#dockerimage_select").val(DOCKER_IMAGE).change();
+            
+            // Set the connection type if it exists
+            if (typeof CONNECTION_TYPE !== 'undefined') {
+                $("#connection_type").val(CONNECTION_TYPE);
+            }
 
             $.each(result['registry_repositories'], function (i, item) {
                 $("#registry-repositories").append($("<option />").val(item.name).text(item.name));
