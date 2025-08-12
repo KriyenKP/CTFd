@@ -120,6 +120,7 @@ class Challenges(db.Model):
     category = db.Column(db.String(80))
     type = db.Column(db.String(80))
     state = db.Column(db.String(80), nullable=False, default="visible")
+    logic = db.Column(db.String(80), nullable=False, default="any")
     requirements = db.Column(db.JSON)
 
     files = db.relationship("ChallengeFiles", backref="challenge")
@@ -406,6 +407,7 @@ class Users(db.Model):
     banned = db.Column(db.Boolean, default=False)
     verified = db.Column(db.Boolean, default=False)
     language = db.Column(db.String(32), nullable=True, default=None)
+    change_password = db.Column(db.Boolean, default=False)
 
     # Relationship for Teams
     team_id = db.Column(db.Integer, db.ForeignKey("teams.id"))
@@ -948,6 +950,10 @@ class Solves(Submissions):
 
 class Fails(Submissions):
     __mapper_args__ = {"polymorphic_identity": "incorrect"}
+
+
+class Partials(Submissions):
+    __mapper_args__ = {"polymorphic_identity": "partial"}
 
 
 class Discards(Submissions):
