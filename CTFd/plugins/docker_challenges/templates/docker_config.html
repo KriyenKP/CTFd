@@ -30,6 +30,21 @@
                         placeholder="Ex: 10.10.10.10:2376" />
                     {% endif %}
                 </div>
+
+                <div class="form-group">
+                    <label for="hostedDomain-input">
+                        Hosted Domain
+                    </label>
+                    {% if config.hostedDomain %}
+                    <input class="form-control" type="text" name="hostedDomain" id="hostedDomain-input"
+                        placeholder="Ex: kriyenkp.duckdns.org" value='{{ config.hostedDomain }}' />
+                    {% else %}
+                    <input class="form-control" type="text" name="hostedDomain" id="hostedDomain-input"
+                        placeholder="Ex: kriyenkp.duckdns.org" />
+                    {% endif %}
+                </div>
+
+
                 <div class="form-group">
                     <p>TLS Enabled?</p>
                     <input type="radio" name="tls_enabled" id="tls-radiobox-no" value="False"
