@@ -331,3 +331,43 @@ function checkForCorrectFlag() {
 if (!checkInterval) {
     var checkInterval = setInterval(checkForCorrectFlag, 1500);
 }
+
+
+// Ensure we have a submit function for flag submissions
+CTFd._internal.challenge.submit = function () {
+  // CTFd will typically call submit(challenge, body)
+  const challenge = arguments[0] || {};
+  const body = arguments[1] || {};
+
+  // Fallbacks if caller didn't provide both
+  const challenge_id = challenge.id || (CTFd._internal.challenge.data && CTFd._internal.challenge.data.id);
+  const submission = body.submission || CTFd.lib.$("input[name='submission']").val();
+
+  if (!challenge_id || !submission) {
+    return Promise.reject(new Error("Missing challenge_id or submission"));
+  }
+
+  // Standard CTFd attempt endpoint
+  return CTFd.fetch("/api/v1/challenges/attempt", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ challenge_id, submission })
+  })
+    .then(res => res.json().then(json => ({ ok: res.ok, json })))
+    .then(({ ok, json }) => {
+      if (!ok || !json.success) {
+        throw new Error(json.message || "Submission failed");
+      }
+
+      // CTFd returns { data: { status: "correct"|"incorrect", message: "..."} }
+      const status = json.data && json.data.status;
+
+      if (status === "correct") {
+        // Optionally refresh docker info and clean up UI
+        try { get_docker_status(CTFd._internal.challenge.data.docker_image); } catch (_) {}
+        // Let the core UI handle the success toast & solve flow by returning the JSON
+      }
+
+      return json;
+    });
+};
